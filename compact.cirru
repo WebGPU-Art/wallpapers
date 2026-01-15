@@ -1,5 +1,5 @@
 
-{} (:package |app)
+{} (:about "|file is generated - never edit directly; learn cr edit/tree workflows before changing") (:package |app)
   :configs $ {} (:init-fn |app.main/main!) (:reload-fn |app.main/reload!) (:version |0.0.1)
     :modules $ [] |respo.calcit/ |lilac/ |memof/ |respo-ui.calcit/ |reel.calcit/
   :entries $ {}
@@ -20,7 +20,7 @@
                   {} $ :class-name (str-spaced css/global)
                   div
                     {} $ :class-name (str-spaced style-title css/font-fancy)
-                    <> "\"Wallpapers"
+                    <> "|WebGPU Art"
                   list->
                     {}
                       :class-name $ str-spaced css/row style-list
@@ -30,6 +30,7 @@
                         [] idx $ comp-image-card info
                   =< nil 120
                   when dev? $ comp-reel (>> states :reel) reel ({})
+          :examples $ []
         |comp-image-card $ %{} :CodeEntry (:doc |)
           :code $ quote
             defcomp comp-image-card (info)
@@ -51,22 +52,22 @@
                       :target "\"_blank"
                       :inner-text "\"Source"
                       :class-name css/link
+          :examples $ []
         |load-cirru-data $ %{} :CodeEntry (:doc |)
           :code $ quote
             defmacro load-cirru-data () $ &data-to-code
               parse-cirru-edn $ read-file "\"content/images.cirru"
+          :examples $ []
         |style-image-card $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-image-card $ {}
-              "\"&" $ let
-                  w 480
-                  h $ * 9 (/ w 16)
-                {} (:width w) (:background-position "\"center") (:background-size "\"480px") (:height h) (:position :relative) (:border-radius "\"8px") (:cursor :pointer) (:transition-duration "\"400ms")
-                  :box-shadow $ str "\"0 0 4px " (hsl 0 0 100 0.4)
-                  :max-width "\"calc(90vw - 40px)"
-                  :justify-self :center
+              "\"&" $ {} (:width 480) (:background-position "\"center") (:background-size "\"480px") (:height 270) (:position :relative) (:border-radius "\"8px") (:cursor :pointer) (:transition-duration "\"400ms")
+                :box-shadow $ str "\"0 0 4px " (hsl 0 0 100 0.4)
+                :max-width "\"calc(90vw - 40px)"
+                :justify-self :center
               "\"&:hover" $ {} (:background-size "\"520px")
                 :box-shadow $ str "\"0 0 4px " (hsl 0 0 100 0.8)
+          :examples $ []
         |style-image-info $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-image-info $ {}
@@ -80,10 +81,12 @@
                 :cursor :default
                 :transition-delay "\"0ms"
               "\"&:hover" $ {} (:opacity 1) (; :height 80) (; :transition-delay "\"200ms")
+          :examples $ []
         |style-list $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-list $ {}
               "\"&" $ {} (:display :grid) (:grid-template-columns "\"repeat(auto-fit, minmax(480px, 1fr))") (:gap "\"12px")
+          :examples $ []
         |style-title $ %{} :CodeEntry (:doc |)
           :code $ quote
             defstyle style-title $ {}
@@ -94,6 +97,7 @@
                 :user-select :none
               "\"& span:hover" $ {}
                 :text-shadow $ str "\"2px 2px 8px " (hsl 0 0 100 0.5)
+          :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
           ns app.comp.container $ :require (respo-ui.css :as css)
@@ -103,21 +107,26 @@
             respo.comp.space :refer $ =<
             reel.comp.reel :refer $ comp-reel
             app.config :refer $ dev?
+        :examples $ []
     |app.config $ %{} :FileEntry
       :defs $ {}
         |dev? $ %{} :CodeEntry (:doc |)
           :code $ quote
             def dev? $ = "\"dev" (get-env "\"mode" "\"release")
+          :examples $ []
         |site $ %{} :CodeEntry (:doc |)
           :code $ quote
             def site $ {} (:storage-key "\"workflow")
+          :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote (ns app.config)
+        :examples $ []
     |app.main $ %{} :FileEntry
       :defs $ {}
         |*reel $ %{} :CodeEntry (:doc |)
           :code $ quote
             defatom *reel $ -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
+          :examples $ []
         |dispatch! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn dispatch! (op)
@@ -125,6 +134,7 @@
                 and config/dev? $ not= op :states
                 js/console.log "\"Dispatch:" op
               reset! *reel $ reel-updater updater @*reel op
+          :examples $ []
         |main! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn main! ()
@@ -142,15 +152,18 @@
                 when (some? raw)
                   dispatch! $ :: :hydrate-storage (parse-cirru-edn raw)
               println "|App started."
+          :examples $ []
         |mount-target $ %{} :CodeEntry (:doc |)
           :code $ quote
             def mount-target $ js/document.querySelector |.app
+          :examples $ []
         |persist-storage! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn persist-storage! ()
               println "\"Saved at" $ .!toISOString (new js/Date)
               js/localStorage.setItem (:storage-key config/site)
                 format-cirru-edn $ :store @*reel
+          :examples $ []
         |reload! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn reload! () $ if (nil? build-errors)
@@ -159,9 +172,11 @@
                 reset! *reel $ refresh-reel @*reel schema/store updater
                 hud! "\"ok~" "\"Ok"
               hud! "\"error" build-errors
+          :examples $ []
         |render-app! $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn render-app! () $ render! mount-target (comp-container @*reel) dispatch!
+          :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
           ns app.main $ :require
@@ -175,6 +190,7 @@
             app.config :as config
             "\"./calcit.build-errors" :default build-errors
             "\"bottom-tip" :default hud!
+        :examples $ []
     |app.schema $ %{} :FileEntry
       :defs $ {}
         |store $ %{} :CodeEntry (:doc |)
@@ -182,8 +198,10 @@
             def store $ {}
               :states $ {}
                 :cursor $ []
+          :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote (ns app.schema)
+        :examples $ []
     |app.updater $ %{} :FileEntry
       :defs $ {}
         |updater $ %{} :CodeEntry (:doc |)
@@ -194,7 +212,9 @@
                   update-states store cursor s
                 (:hydrate-storage data) data
                 _ $ do (eprintln "\"unknown op:" op) store
+          :examples $ []
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
           ns app.updater $ :require
             respo.cursor :refer $ update-states
+        :examples $ []

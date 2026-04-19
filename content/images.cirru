@@ -312,3 +312,8 @@
     :url |https://cos-sh.tiye.me/cos-up/0512bae9869c91d58354c895bf450424/pasted-2025-01-12T17:14:05.748Z.png
     :address |https://repo.webgpu.art/caterfoil.mbt/?tab=cubic-array
     :comment "|Hyper Cubic Array projected to 2D canvas"
+  {}
+    :name "|Hyper Cubic Array"
+    :url |https://cos-sh.tiye.me/cos-up/e464c208b5f67369a46d87017602c696/pasted-2026-04-19T17:39:31.425Z.png
+    :address |https://repo.webgpu.art/soluble/?tab=rhombic-mirror
+    :comment "|Rhombic Mirror"

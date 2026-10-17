@@ -13,9 +13,13 @@
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel)
             let
-                store $ assert-type (&map:get reel :store) (:: 'Map 'Tag 'Dynamic)
-                states $ assert-type (&map:get store :states) (:: 'Map 'Tag 'Dynamic)
-                images-list $ assert-type (load-cirru-data)
+                store $ decode-map-as
+                  .unwrap-or (get reel :store) nil
+                  :: 'Map 'Tag 'Dynamic
+                states $ decode-map-as
+                  .unwrap-or (get store :states) nil
+                  :: 'Map 'Tag 'Dynamic
+                images-list $ decode-map-as (load-cirru-data)
                   :: 'List $ :: 'Map 'Tag 'Dynamic
               div
                 {} $ :class-name $ str-spaced css/global
@@ -39,11 +43,15 @@
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
-                url $ assert-type (&map:get info :url) 'String
-                name $ assert-type (&map:get info :name) 'String
+                url $ decode-map-as
+                  .unwrap-or (get info :url) nil
+                  , 'String
+                name $ decode-map-as
+                  .unwrap-or (get info :name) nil
+                  , 'String
                 address $ let
-                    raw $ &map:get info :address
-                  if (nil? raw) nil $ assert-type raw 'String
+                    raw $ .unwrap-or (get info :address) nil
+                  if (nil? raw) nil $ decode-map-as raw 'String
               div
                 {} (:class-name style-image-card)
                   :on-click $ fn (e d!)
@@ -150,25 +158,29 @@
     'app.main $ %{} 'FileEntry
       :defs $ {}
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reel
+          :code $ quote $ defref *reel
             -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
           :examples $ []
           :schema $ :: 'Ref $ :: 'Map 'Tag 'Dynamic
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            when config/dev? $ match op
-              (:states cursor state) &unit
-              _ $ println |Dispatch: op
-            reset! *reel $ reel-updater updater @*reel op
+            if (enum? op)
+              do
+                when config/dev? $ match op
+                  (:states cursor state) &unit
+                  _ $ println |Dispatch: op
+                reset! *reel $ reel-updater reel-updater-adapter @*reel op
+                , &unit
+              raise "|Expected a Respo event tuple"
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Enum
+            :args $ [] 'Dynamic
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
             if config/dev? $ load-console-formatter!
             render-app!
-            add-watch *reel :changes $ fn (reel prev) (render-app!)
+            add-watch! *reel :changes $ fn (reel prev) (render-app!)
             listen-devtools! |k dispatch!
             browser/add-event-listener! |beforeunload $ fn (event)
               hint-fn $ {}
@@ -196,15 +208,15 @@
             :features $ #{} :js-ffi
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
-            .unwrap $ browser/query-selector |.app
+            .unwrap $ respo-browser/query-selector |.app
           :examples $ []
-          :schema $ :: 'js-ffi.browser/DomElementHost
+          :schema $ :: 'respo.dom/DomElement
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             println "|Saved at" $ :iso $ shared/date-now-snapshot
             browser/storage-set!
               .unwrap $ get config/site :storage-key
-              format-cirru-edn $ &map:get @*reel :store
+              format-cirru-edn $ .unwrap-or (get @*reel :store) nil
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ []
@@ -216,11 +228,11 @@
                     :args $ [] 'String 'String
                     :return 'Unit
               if (js-nullish? build-errors)
-                do (remove-watch *reel :changes) (clear-cache!)
-                  add-watch *reel :changes $ fn (reel prev) (render-app!)
-                  reset! *reel $ assert-type (refresh-reel @*reel schema/store updater) (:: 'Map 'Tag 'Dynamic)
+                do (remove-watch! *reel :changes) (clear-cache!)
+                  add-watch! *reel :changes $ fn (reel prev) (render-app!)
+                  reset! *reel $ decode-map-as (refresh-reel @*reel schema/store reel-updater-adapter) (:: 'Map 'Tag 'Dynamic)
                   show! |ok~ |Ok
-                show! |error $ unsafe-coerce build-errors 'String
+                show! |error $ contract/expect-string |build-errors build-errors
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -237,7 +249,7 @@
           :require
             respo.core :refer $ render! clear-cache!
             app.comp.container :refer $ comp-container
-            app.updater :refer $ updater
+            app.updater :refer $ reel-updater-adapter
             app.schema :as schema
             reel.util :refer $ listen-devtools!
             reel.core :refer $ reel-updater refresh-reel
@@ -247,6 +259,8 @@
             |bottom-tip :default hud!
             js-ffi.browser :as browser
             js-ffi.shared :as shared
+            js-ffi.contract :as contract
+            respo.ffi.browser :as respo-browser
     'app.schema $ %{} 'FileEntry
       :defs $ {} $ 'store
         %{} 'CodeEntry (:doc |)
@@ -258,14 +272,29 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
-      :defs $ {} $ 'updater
-        %{} 'CodeEntry (:doc |)
+      :defs $ {}
+        'reel-updater-adapter $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn reel-updater-adapter (store op op-id op-time)
+            if (enum? op)
+              updater
+                decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                , op (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
+              raise "|Expected an event tuple from Reel"
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
+        'updater $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:states cursor s)
-                assert-type (update-states store cursor s) (:: 'Map 'Tag 'Dynamic)
+                decode-map-as
+                  update-states store
+                    decode-map-as cursor $ :: 'List 'Dynamic
+                    , s
+                  :: 'Map 'Tag 'Dynamic
               (:hydrate-storage data)
-                assert-type data $ :: 'Map 'Tag 'Dynamic
+                decode-map-as data $ :: 'Map 'Tag 'Dynamic
               _ $ do (eprintln "|unknown op:" op) store
           :examples $ []
           :schema $ :: 'Fn $ {}

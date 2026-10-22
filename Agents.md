@@ -1,6 +1,6 @@
 # Wallpapers 的 Calcit 开发约定
 
-先读 [README](README.md) 和 [Respo 使用说明](llms/Respo.md)。工具链和模块版本以 deps.cirru、package.json、yarn.lock 为准；编译器 0.30.1-alpha.4 仍是预发布。
+先读 [README](README.md) 和 [Respo 使用说明](llms/Respo.md)。工具链和模块版本以 deps.cirru、package.json、yarn.lock 为准；Calcit / @calcit/procs 配对正式 0.30.1。
 
 ## 结构化源码
 

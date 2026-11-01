@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/
-      :type-slots $ {}
+      :type-slots $ {} $ :dispatch-op 'Dynamic
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -31,15 +31,13 @@
                     :class-name $ str-spaced css/row style-list
                     :style $ {} (:flex-wrap :wrap) (:margin |40px)
                   -> images-list .reverse $ map-indexed $ fn (idx info)
-                    hint-fn $ {}
-                      :args $ [] 'Number $ :: 'Map 'Tag 'Dynamic
-                      :return $ :: 'List 'Dynamic
+                    hint-fn $ Fn Number (Map Tag Dynamic)
+                      -> $ List Dynamic
                     [] idx $ comp-image-card info
                 =< nil 120
                 when dev? $ comp-reel (>> states :reel) reel $ {}
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> respo.schema/Component)
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
@@ -55,12 +53,9 @@
               div
                 {} (:class-name style-image-card)
                   :on-click $ fn (e d!)
-                    hint-fn $ {}
-                      :args $ [] 'RespoEvent $ :: 'Fn
-                        {}
-                          :args $ [] 'Enum
-                          :return 'Unit
-                      :return 'Unit
+                    hint-fn $ Fn RespoEvent
+                      Fn Enum $ -> Unit
+                      -> Unit
                     browser/window-open url
                     , &unit
                   :style $ {} $ :background-image (str "|url(" url |?imageView2/q/80/2/w/400/h/400 "|)")
@@ -68,26 +63,21 @@
                   {}
                     :class-name $ str-spaced style-image-info css/font-fancy
                     :on-click $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] 'RespoEvent $ :: 'Fn
-                          {}
-                            :args $ [] 'Enum
-                            :return 'Unit
-                        :return 'Unit
+                      hint-fn $ Fn RespoEvent
+                        Fn Enum $ -> Unit
+                        -> Unit
                       , &unit
                   div ({}) (<> name) (=< 8 nil)
                     a $ {} (:href address) (:target |_blank) (:inner-text |Source) (:class-name css/link)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> respo.schema/Component)
         'load-cirru-data $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defmacro load-cirru-data ()
             &data-to-code $ parse-cirru-edn $ read-file |content/images.cirru
           :examples $ []
-          :schema $ :: 'Macro $ {}
-            :capabilities $ #{} :fs-read
-            :expansion $ :: 'Expr $ :: 'List (:: 'Map 'Tag 'Dynamic)
-            :required $ []
+          :schema $ quote $ Macro
+            -> $ Expr $ List (Map Tag Dynamic)
+            :capabilities :fs-read
         'style-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-image-card
             {}
@@ -98,7 +88,7 @@
               |&:hover $ {} (:background-size |520px)
                 :box-shadow $ str "|0 0 4px " $ hsl 0 0 100 0.8
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-image-info $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-image-info
             {}
@@ -113,12 +103,12 @@
                 :transition-delay |0ms
               |&:hover $ {} (:opacity 1) (; :height 80) (; :transition-delay |200ms)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-list $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-list
             {} $ |& $ {} (:display :grid) (:grid-template-columns "|repeat(auto-fit, minmax(480px, 1fr))") (:gap |12px)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
         'style-title $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-title
             {}
@@ -130,7 +120,7 @@
               "|& span:hover" $ {} $ :text-shadow
                 str "|2px 2px 8px " $ hsl 0 0 100 0.5
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.css :as css)
@@ -147,12 +137,12 @@
           :code $ quote $ def dev?
             = |dev $ .unwrap-or (get-env |mode) |release
           :examples $ []
-          :schema $ :: 'Bool
+          :schema $ quote Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             {} $ :storage-key |workflow
           :examples $ []
-          :schema $ :: 'Map 'Tag 'String
+          :schema $ quote $ Map Tag String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.config
     'app.main $ %{} 'FileEntry
@@ -161,7 +151,7 @@
           :code $ quote $ defref *reel
             -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
           :examples $ []
-          :schema $ :: 'Ref $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Ref (Map Tag Dynamic)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             if (enum? op)
@@ -173,8 +163,7 @@
                 , &unit
               raise "|Expected a Respo event tuple"
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -182,35 +171,29 @@
             render-app!
             add-watch! *reel :changes $ fn (reel prev) (render-app!)
             listen-devtools! |k dispatch!
-            browser/add-event-listener! |beforeunload $ fn (event)
-              hint-fn $ {}
-                :args $ [] 'js-ffi.browser/EventHost
-                :return 'Unit
-              persist-storage!
-            browser/add-event-listener! |visibilitychange $ fn (event)
-              hint-fn $ {}
-                :args $ [] 'js-ffi.browser/EventHost
-                :return 'Unit
-              match (browser/visibility-state)
-                (:hidden) (persist-storage!)
-                _ &unit
-            browser/set-interval! persist-storage! 60000
             match
               browser/storage-get $ .unwrap $ get config/site :storage-key
               (:some raw)
                 dispatch! $ :: :hydrate-storage $ parse-cirru-edn raw
               (:none) &unit
+            browser/add-event-listener! |beforeunload $ fn (event)
+              hint-fn $ Fn js-ffi.browser/EventHost $ -> Unit
+              persist-storage!
+            browser/add-event-listener! |visibilitychange $ fn (event)
+              hint-fn $ Fn js-ffi.browser/EventHost $ -> Unit
+              match (browser/visibility-state)
+                (:hidden) (persist-storage!)
+                _ &unit
+            browser/set-interval! persist-storage! 60000
             println "|App started."
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
             .unwrap $ respo-browser/query-selector |.app
           :examples $ []
-          :schema $ :: 'respo.dom/DomElement
+          :schema $ quote respo.dom/DomElement
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             println "|Saved at" $ :iso $ shared/date-now-snapshot
@@ -218,15 +201,12 @@
               .unwrap $ get config/site :storage-key
               format-cirru-edn $ .unwrap-or (get @*reel :store) nil
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             let
-                show! $ unsafe-coerce hud! $ :: 'Fn
-                  {}
-                    :args $ [] 'String 'String
-                    :return 'Unit
+                show! $ unsafe-coerce hud! $ quote
+                  Fn String String $ -> Unit
               if (js-nullish? build-errors)
                 do (remove-watch! *reel :changes) (clear-cache!)
                   add-watch! *reel :changes $ fn (reel prev) (render-app!)
@@ -235,15 +215,12 @@
                 show! |error $ contract/expect-string |build-errors build-errors
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! mount-target (comp-container @*reel) dispatch!
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
@@ -268,7 +245,7 @@
             {} $ :states $ {}
               :cursor $ []
           :examples $ []
-          :schema $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -281,9 +258,8 @@
                 , op (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
               raise "|Expected an event tuple from Reel"
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic 'Dynamic 'Dynamic 'Dynamic
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic
+            -> $ Map Tag Dynamic
         'updater $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (store op op-id op-time)
             match op
@@ -297,9 +273,8 @@
                 decode-map-as data $ :: 'Map 'Tag 'Dynamic
               _ $ do (eprintln "|unknown op:" op) store
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Enum 'String 'Number
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) Enum String Number
+            -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require $ respo.cursor :refer $ update-states

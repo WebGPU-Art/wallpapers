@@ -7,7 +7,7 @@ Demo https://webgpu.art/wallpapers/ .
 
 ### Workflow
 
-使用配对的正式 Calcit / `@calcit/procs` **0.30.1**、Caps 0.1.1、Node.js 24、Yarn 4.18.0：
+使用配对的正式 Calcit / `@calcit/procs` **0.32.1**、Caps 0.1.1、Node.js 24、Yarn 4.18.0：
 
 ```sh
 caps --strict --ci
@@ -24,7 +24,29 @@ corepack yarn dev
 
 生产工作流串行且不中途取消：上传开始后即使 main 有新提交，也先完成当前版本的 COS 和服务器部署，再处理队列中的新版本。HEAD 检查用于跳过尚未开始上传的过期构建，不承诺部署时刻与 main 原子同步；不重复查询来缩小但无法消除该时间窗口。
 
-Respo 0.16.124、Reel 0.6.41、UI 0.8.0 和 js-ffi 0.2.5 使用精确正式 tag。Actions 同样使用精确正式 tag；这按维护者选择接受 tag 可移动的风险，不等价于 SHA pin 的不可变性。
+Respo 0.17.1、Reel 0.7.0、UI 0.9.0 和 js-ffi 0.2.9 使用精确正式 tag。Actions 同样使用精确正式 tag；这按维护者选择接受 tag 可移动的风险，不等价于 SHA pin 的不可变性。
+
+### 本轮迁移与验收
+
+CLI 与 runtime 更新为 0.32.1，并用官方格式化迁移新的类型标注语法。
+当前恢复存档成功后才注册自动保存和离页/可见性保存；坏存档恢复失败时仍报告原错误，
+不会用默认值替代失败输入。正常存档格式、key 和 60 秒保存间隔保持不变。
+
+19 个定义仅 main! 的恢复节点调整顺序，其余执行代码、schema 和元数据保持。
+入口显式声明既有开放 dispatch 合同，Reel 匿名控制与原 Enum 检查/受检 updater 入口保留，
+不把开放 callback 假标为单一名义 Op，也不放宽业务类型。UI 0.9.0 的 Router
+0.9.0-alpha.4 沿用其已发布依赖图。
+
+本轮 Caps strict 五个模块和工具链校验、Yarn immutable、198/198 全定义检查（含依赖）、
+strict workflow（diagnostics=[]）与前端构建通过。新解析候选版本的 npm 包龄设为 60 分钟，
+正常复用 yarn.lock 时不重新等待。移除原零包龄、
+全局 Git 白名单和显式启用脚本配置。CLI 安装显式跟随 deps.cirru。
+Dependabot 保留检查和构建，但不尝试使用普通部署 secrets 上传预览。
+
+实际正常/开发模式、Reel 开关和重绘通过，页面原图卡片及 Source 链接保留，error/warn 为空。
+已在独立回环来源用合成 workflow=|not-a-store 验证：启动仍报告原恢复错误，
+超过原 60 秒周期、离页、再次启动与刷新后原文均保持，不回退默认数据。
+该检查只证明实际拒绝恢复时不会启用保存，不等于完整存档结构验证。
 
 ### 迁移注意事项
 

@@ -1,6 +1,6 @@
 # Wallpapers 的 Calcit 开发约定
 
-先读 [README](README.md) 和 [Respo 使用说明](llms/Respo.md)。工具链和模块版本以 deps.cirru、package.json、yarn.lock 为准；Calcit / @calcit/procs 配对正式 0.30.1。
+先读 [README](README.md) 和 [Respo 使用说明](llms/Respo.md)。工具链和模块版本以 deps.cirru、package.json、yarn.lock 为准；Calcit / @calcit/procs 配对正式 0.32.1。
 
 ## 结构化源码
 
@@ -22,6 +22,7 @@ calcit query search '&map:get' --filter app.main --exact
 - 宿主值使用已发布 js-ffi / Respo 入口；挂载节点用 respo.ffi.browser/query-selector，不伪造 DOM 类型。
 - Reel 的开放回调在 reel-updater-adapter 检查实际输入，具体 updater 的合同不放宽。
 - 真正的错误先确认所属模块并查已有 issue，再附最小复现上报；不修改共享缓存，不添加编译器硬编码规则。
+- 必须恢复存档成功后才注册保存定时器和离页/可见性保存监听；恢复失败不得覆盖原文。
 - HUD 现有一处宿主函数签名信任与开放 Map 的 Dynamic 必须如实记录，不能用伪断言清零。
 
 ## 验收与部署

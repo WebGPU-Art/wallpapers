@@ -38,7 +38,8 @@ CLI 与 runtime 更新为 0.32.1，并用官方格式化迁移新的类型标注
 0.9.0-alpha.4 沿用其已发布依赖图。
 
 本轮 Caps strict 五个模块和工具链校验、Yarn immutable、198/198 全定义检查（含依赖）、
-strict workflow（diagnostics=[]）与前端构建通过。npm 包龄统一 60 分钟，移除原零包龄、
+strict workflow（diagnostics=[]）与前端构建通过。新解析候选版本的 npm 包龄设为 60 分钟，
+正常复用 yarn.lock 时不重新等待。移除原零包龄、
 全局 Git 白名单和显式启用脚本配置。CLI 安装显式跟随 deps.cirru。
 Dependabot 保留检查和构建，但不尝试使用普通部署 secrets 上传预览。
 

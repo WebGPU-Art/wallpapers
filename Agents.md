@@ -1,6 +1,6 @@
 # Wallpapers 的 Calcit 开发约定
 
-先读 [README](README.md) 和 [Respo 使用说明](llms/Respo.md)。工具链和模块版本以 deps.cirru、package.json、yarn.lock 为准；Calcit / @calcit/procs 配对正式 0.32.1。
+先读 [README](README.md) 和 [Respo 使用说明](llms/Respo.md)。工具链和模块版本以 deps.cirru、package.json、yarn.lock 为准；Calcit / @calcit/procs 配对正式 0.35.1。
 
 ## 结构化源码
 
@@ -18,7 +18,7 @@ calcit query search '&map:get' --filter app.main --exact
 
 ## 类型和行为
 
-- Map 读取使用 get 的 Option 合同；必填字段错误不能变成默认空数据，可选 Source 地址保留 nil。
+- Map 读取使用 get 的 Option 合同；必填字段错误不能变成默认空数据，缺失或为 nil 的 Source 地址在读取后转为 Option none。
 - 宿主值使用已发布 js-ffi / Respo 入口；挂载节点用 respo.ffi.browser/query-selector，不伪造 DOM 类型。
 - Reel 的开放回调在 reel-updater-adapter 检查实际输入，具体 updater 的合同不放宽。
 - 真正的错误先确认所属模块并查已有 issue，再附最小复现上报；不修改共享缓存，不添加编译器硬编码规则。

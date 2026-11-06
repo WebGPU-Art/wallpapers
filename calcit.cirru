@@ -6,21 +6,30 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/
-      :type-slots $ {} $ :dispatch-op 'Dynamic
+      :type-slots $ {} $ :dispatch-op |app.schema/DispatchOp
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
+        'Wallpaper $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Wallpaper (:url String) (:name String)
+            :address $ Option String
+          :examples $ []
+          :schema $ quote StructDef
+        'WallpaperChild $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion WallpaperChild Number respo.schema/Component
+          :examples $ []
+          :schema $ quote UnionDef
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel)
             let
                 store $ decode-map-as
                   .unwrap-or (get reel :store) nil
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 states $ decode-map-as
                   .unwrap-or (get store :states) nil
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
                 images-list $ decode-map-as (load-cirru-data)
-                  :: 'List $ :: 'Map 'Tag 'Dynamic
+                  List $ Map Tag Dynamic
               div
                 {} $ :class-name $ str-spaced css/global
                 div
@@ -32,29 +41,25 @@
                     :style $ {} (:flex-wrap :wrap) (:margin |40px)
                   -> images-list .reverse $ map-indexed $ fn (idx info)
                     hint-fn $ Fn Number (Map Tag Dynamic)
-                      -> $ List Dynamic
-                    [] idx $ comp-image-card info
-                =< nil 120
-                when dev? $ comp-reel (>> states :reel) reel $ {}
+                      -> $ List app.comp.container/WallpaperChild
+                    [] idx $ comp-image-card $ decode-wallpaper info
+                space-y 120
+                if dev?
+                  Option :some $ comp-reel (>> states :reel) reel $ {}
+                  Option :none
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) (-> respo.schema/Component)
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
-                url $ decode-map-as
-                  .unwrap-or (get info :url) nil
-                  , 'String
-                name $ decode-map-as
-                  .unwrap-or (get info :name) nil
-                  , 'String
-                address $ let
-                    raw $ .unwrap-or (get info :address) nil
-                  if (nil? raw) nil $ decode-map-as raw 'String
+                url $ :url info
+                name $ :name info
+                address $ :address info
               div
                 {} (:class-name style-image-card)
                   :on-click $ fn (e d!)
                     hint-fn $ Fn RespoEvent
-                      Fn Enum $ -> Unit
+                      Fn AnyEnum $ -> Unit
                       -> Unit
                     browser/window-open url
                     , &unit
@@ -64,13 +69,34 @@
                     :class-name $ str-spaced style-image-info css/font-fancy
                     :on-click $ fn (e d!)
                       hint-fn $ Fn RespoEvent
-                        Fn Enum $ -> Unit
+                        Fn AnyEnum $ -> Unit
                         -> Unit
                       , &unit
-                  div ({}) (<> name) (=< 8 nil)
-                    a $ {} (:href address) (:target |_blank) (:inner-text |Source) (:class-name css/link)
+                  div ({}) (<> name) (space-x 8)
+                    a $ let
+                        props $ {} (:target |_blank) (:inner-text |Source) (:class-name css/link)
+                      match address
+                        (:some source) (assoc props :href source)
+                        (:none) props
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> respo.schema/Component)
+          :schema $ quote $ Fn app.comp.container/Wallpaper (-> respo.schema/Component)
+        'decode-wallpaper $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-wallpaper (info)
+            let
+                url $ decode-map-as
+                  .unwrap $ get info :url
+                  , String
+                name $ decode-map-as
+                  .unwrap $ get info :name
+                  , String
+                address $ match (get info :address)
+                  (:none) (Option :none)
+                  (:some raw)
+                    if (nil? raw) (Option :none)
+                      Option :some $ decode-map-as raw String
+              Wallpaper :url url :name name :address address
+          :examples $ []
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> app.comp.container/Wallpaper)
         'load-cirru-data $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defmacro load-cirru-data ()
             &data-to-code $ parse-cirru-edn $ read-file |content/images.cirru
@@ -127,7 +153,7 @@
             respo.util.format :refer $ hsl
             respo.css :refer $ defstyle
             respo.core :refer $ defcomp defeffect <> >> list-> div button textarea span input a
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x space-y
             reel.comp.reel :refer $ comp-reel
             app.config :refer $ dev?
             js-ffi.browser :as browser
@@ -205,12 +231,11 @@
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             let
-                show! $ unsafe-coerce hud! $ quote
-                  Fn String String $ -> Unit
+                show! $ unsafe-coerce hud! $ Fn String String (-> Unit)
               if (js-nullish? build-errors)
                 do (remove-watch! *reel :changes) (clear-cache!)
                   add-watch! *reel :changes $ fn (reel prev) (render-app!)
-                  reset! *reel $ decode-map-as (refresh-reel @*reel schema/store reel-updater-adapter) (:: 'Map 'Tag 'Dynamic)
+                  reset! *reel $ decode-map-as (refresh-reel @*reel schema/store reel-updater-adapter) (Map Tag Dynamic)
                   show! |ok~ |Ok
                 show! |error $ contract/expect-string |build-errors build-errors
             , &unit
@@ -218,13 +243,15 @@
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
-            render! mount-target (comp-container @*reel) dispatch!
+            render-with! mount-target
+              fn () $ comp-container @*reel
+              , dispatch!
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
-            respo.core :refer $ render! clear-cache!
+            respo.core :refer $ render-with! clear-cache!
             app.comp.container :refer $ comp-container
             app.updater :refer $ reel-updater-adapter
             app.schema :as schema
@@ -239,8 +266,12 @@
             js-ffi.contract :as contract
             respo.ffi.browser :as respo-browser
     'app.schema $ %{} 'FileEntry
-      :defs $ {} $ 'store
-        %{} 'CodeEntry (:doc |)
+      :defs $ {}
+        'DispatchOp $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def DispatchOp (:: :unhandled)
+          :examples $ []
+          :schema $ quote AnyEnum
+        'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             {} $ :states $ {}
               :cursor $ []
@@ -254,7 +285,7 @@
           :code $ quote $ defn reel-updater-adapter (store op op-id op-time)
             if (enum? op)
               updater
-                decode-map-as store $ :: 'Map 'Tag 'Dynamic
+                decode-map-as store $ Map Tag Dynamic
                 , op (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
               raise "|Expected an event tuple from Reel"
           :examples $ []
@@ -266,14 +297,14 @@
               (:states cursor s)
                 decode-map-as
                   update-states store
-                    decode-map-as cursor $ :: 'List 'Dynamic
+                    decode-map-as cursor $ List respo.schema/CoordKey
                     , s
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
               (:hydrate-storage data)
-                decode-map-as data $ :: 'Map 'Tag 'Dynamic
+                decode-map-as data $ Map Tag Dynamic
               _ $ do (eprintln "|unknown op:" op) store
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) Enum String Number
+          :schema $ quote $ Fn (Map Tag Dynamic) AnyEnum String Number
             -> $ Map Tag Dynamic
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater

@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/
-      :type-slots $ {} $ :dispatch-op |app.schema/DispatchOp
+      :type-slots $ {} $ :dispatch-op 'app.schema/DispatchOp
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -22,12 +22,12 @@
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel)
             let
-                store $ decode-map-as
-                  .unwrap-or (get reel :store) nil
-                  Map Tag Dynamic
-                states $ decode-map-as
-                  .unwrap-or (get store :states) nil
-                  Map Tag Dynamic
+                store $ :store reel
+                states $ match (get store :states)
+                  (:some data)
+                    decode-map-as data $ Map Tag Dynamic
+                  (:none)
+                    decode-map-as nil $ Map Tag Dynamic
                 images-list $ decode-map-as (load-cirru-data)
                   List $ Map Tag Dynamic
               div
@@ -45,10 +45,12 @@
                     [] idx $ comp-image-card $ decode-wallpaper info
                 space-y 120
                 if dev?
-                  Option :some $ comp-reel (>> states :reel) reel $ {}
+                  Option :some $ comp-typed-reel (>> states :reel) reel $ {}
                   Option :none
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> respo.schema/Component)
+          :schema $ quote $ Fn
+            reel.typed/State app.schema/Op $ Map Tag Dynamic
+            -> respo.schema/Component
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
@@ -154,7 +156,7 @@
             respo.css :refer $ defstyle
             respo.core :refer $ defcomp defeffect <> >> list-> div button textarea span input a
             respo.comp.space :refer $ space-x space-y
-            reel.comp.reel :refer $ comp-reel
+            reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
             js-ffi.browser :as browser
     'app.config $ %{} 'FileEntry
@@ -174,10 +176,10 @@
     'app.main $ %{} 'FileEntry
       :defs $ {}
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defref *reel
-            -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
+          :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
-          :schema $ quote $ Ref (Map Tag Dynamic)
+          :schema $ quote $ Ref
+            reel.typed/State app.schema/Op $ Map Tag Dynamic
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             if (enum? op)
@@ -185,11 +187,18 @@
                 when config/dev? $ match op
                   (:states cursor state) &unit
                   _ $ println |Dispatch: op
-                reset! *reel $ reel-updater reel-updater-adapter @*reel op
+                match (typed/decode-control op)
+                  (:some control)
+                    reset! *reel $ typed/apply-control updater @*reel control
+                  (:none)
+                    match (schema/normalize-op op)
+                      (:some action)
+                        reset! *reel $ typed/record-op updater @*reel action (generate-id!) (shared/now-ms)
+                      (:none) &unit
                 , &unit
               raise "|Expected a Respo event tuple"
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit)
+          :schema $ quote $ Fn AnyEnum (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -225,7 +234,7 @@
             println "|Saved at" $ :iso $ shared/date-now-snapshot
             browser/storage-set!
               .unwrap $ get config/site :storage-key
-              format-cirru-edn $ .unwrap-or (get @*reel :store) nil
+              format-cirru-edn $ :store @*reel
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
         'reload! $ %{} 'CodeEntry (:doc |)
@@ -235,7 +244,7 @@
               if (js-nullish? build-errors)
                 do (remove-watch! *reel :changes) (clear-cache!)
                   add-watch! *reel :changes $ fn (reel prev) (render-app!)
-                  reset! *reel $ decode-map-as (refresh-reel @*reel schema/store reel-updater-adapter) (Map Tag Dynamic)
+                  reset! *reel $ typed/refresh updater @*reel schema/store
                   show! |ok~ |Ok
                 show! |error $ contract/expect-string |build-errors build-errors
             , &unit
@@ -253,11 +262,10 @@
           :require
             respo.core :refer $ render-with! clear-cache!
             app.comp.container :refer $ comp-container
-            app.updater :refer $ reel-updater-adapter
+            app.updater :refer $ updater
             app.schema :as schema
             reel.util :refer $ listen-devtools!
-            reel.core :refer $ reel-updater refresh-reel
-            reel.schema :as reel-schema
+            reel.typed :as typed
             app.config :as config
             |./calcit.build-errors :default build-errors
             |bottom-tip :default hud!
@@ -271,6 +279,25 @@
           :code $ quote $ def DispatchOp (:: :unhandled)
           :examples $ []
           :schema $ quote AnyEnum
+        'Op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum Op
+            :states (List respo.schema/CoordKey) Dynamic
+            :hydrate-storage $ Map Tag Dynamic
+          :examples $ []
+          :schema $ quote EnumDef
+        'normalize-op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn normalize-op (event)
+            match event
+              (:states cursor data)
+                Option :some $ app.schema/Op :states
+                  decode-map-as cursor $ List respo.schema/CoordKey
+                  , data
+              (:hydrate-storage data)
+                Option :some $ app.schema/Op :hydrate-storage $ decode-map-as data (Map Tag Dynamic)
+              _ $ do (eprintln "|Unknown op:" event) (Option :none)
+          :examples $ []
+          :schema $ quote $ Fn AnyEnum
+            -> $ Option app.schema/Op
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             {} $ :states $ {}
@@ -280,32 +307,34 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
-      :defs $ {}
-        'reel-updater-adapter $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn reel-updater-adapter (store op op-id op-time)
-            if (enum? op)
-              updater
-                decode-map-as store $ Map Tag Dynamic
-                , op (decode-map-as op-id 'String) (decode-map-as op-time 'Number)
-              raise "|Expected an event tuple from Reel"
-          :examples $ []
-          :schema $ quote $ Fn Dynamic Dynamic Dynamic Dynamic
-            -> $ Map Tag Dynamic
-        'updater $ %{} 'CodeEntry (:doc |)
+      :defs $ {} $ 'updater
+        %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:states cursor s)
-                decode-map-as
-                  update-states store
-                    decode-map-as cursor $ List respo.schema/CoordKey
-                    , s
-                  Map Tag Dynamic
-              (:hydrate-storage data)
-                decode-map-as data $ Map Tag Dynamic
-              _ $ do (eprintln "|unknown op:" op) store
+                decode-map-as (update-states store cursor s) (Map Tag Dynamic)
+              (:hydrate-storage data) data
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) AnyEnum String Number
+          :schema $ quote $ Fn (Map Tag Dynamic) app.schema/Op String Number
             -> $ Map Tag Dynamic
+          :tests $ [] $ %{} 'TestEntry (:name |typed-reel-keeps-legacy-store)
+            :code $ quote $ let
+                archive $ {}
+                  :states $ {} $ :cursor ([])
+                  :extra |keep
+                restore $ .unwrap $ app.schema/normalize-op (:: :hydrate-storage archive)
+                state $ .unwrap $ app.schema/normalize-op
+                  :: :states ([] :menu |row 1) true
+                reel $ assert-type (reel.typed/new-reel app.schema/store)
+                  reel.typed/State app.schema/Op $ Map Tag Dynamic
+                restored $ reel.typed/record-op updater reel restore |restore 0
+                edited $ reel.typed/record-op updater restored state |state 1
+              assert= archive $ :store restored
+              assert= (Result :ok true)
+                get-in (:store edited) ([] :states :menu |row 1 :data)
+              assert= (:store edited)
+                :store $ reel.typed/refresh updater edited app.schema/store
+            :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require $ respo.cursor :refer $ update-states

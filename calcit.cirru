@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/
-      :type-slots $ {} $ :dispatch-op 'app.schema/DispatchOp
+      :type-slots $ {} $ :dispatch-op 'app.schema/Op
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -20,7 +20,7 @@
           :examples $ []
           :schema $ quote UnionDef
         'comp-container $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-container (reel)
+          :code $ quote $ defcomp comp-container (reel on-control)
             let
                 states $ :states $ :store reel
                 images-list $ decode-map-as (load-cirru-data)
@@ -40,10 +40,12 @@
                     [] idx $ comp-image-card $ decode-wallpaper info
                 space-y 120
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel $ {}
+                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
                   Option :none
           :examples $ []
-          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store) (-> respo.schema/Component)
+          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
+            Fn reel.typed/Control $ -> Unit
+            -> respo.schema/Component
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
@@ -54,7 +56,7 @@
                 {} (:class-name style-image-card)
                   :on-click $ fn (e d!)
                     hint-fn $ Fn RespoEvent
-                      Fn AnyEnum $ -> Unit
+                      Fn app.schema/Op $ -> Unit
                       -> Unit
                     browser/window-open url
                     , &unit
@@ -64,7 +66,7 @@
                     :class-name $ str-spaced style-image-info css/font-fancy
                     :on-click $ fn (e d!)
                       hint-fn $ Fn RespoEvent
-                        Fn AnyEnum $ -> Unit
+                        Fn app.schema/Op $ -> Unit
                         -> Unit
                       , &unit
                   div ({}) (<> name) (space-x 8)
@@ -174,34 +176,25 @@
           :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            if (enum? op)
-              do
-                when config/dev? $ match op
-                  (:states cursor state) &unit
-                  _ $ println |Dispatch: op
-                match (typed/decode-control op)
-                  (:some control)
-                    reset! *reel $ typed/apply-control updater @*reel control
-                  (:none)
-                    match (schema/normalize-op op)
-                      (:some action)
-                        reset! *reel $ typed/record-op updater @*reel action (generate-id!) (shared/now-ms)
-                      (:none) &unit
-                , &unit
-              raise "|Expected a Respo event tuple"
+            when config/dev? $ match op
+              (:states _ _) &unit
+              _ $ println |Dispatch: op
+            reset! *reel $ typed/record-op updater @*reel op (generate-id!) (shared/now-ms)
+            , &unit
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn app.schema/Op (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
             if config/dev? $ load-console-formatter!
             render-app!
             add-watch! *reel :changes $ fn (reel prev) (render-app!)
-            listen-devtools! |k dispatch!
+            listen-devtools! |k on-control!
             match
               browser/storage-get $ .unwrap $ get config/site :storage-key
               (:some raw)
-                dispatch! $ :: :hydrate-storage $ parse-cirru-edn raw
+                dispatch! $ schema/Op :hydrate-storage $ schema/decode-store
+                  decode-map-as (parse-cirru-edn raw) (Map Tag Dynamic)
               (:none) &unit
             browser/add-event-listener! |beforeunload $ fn (event)
               hint-fn $ Fn js-ffi.browser/EventHost $ -> Unit
@@ -221,6 +214,12 @@
             .unwrap $ respo-browser/query-selector |.app
           :examples $ []
           :schema $ quote respo.dom/DomElement
+        'on-control! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn on-control! (control)
+            reset! *reel $ typed/apply-control updater @*reel control
+            , &unit
+          :examples $ []
+          :schema $ quote $ Fn reel.typed/Control (-> Unit)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             println "|Saved at" $ :iso $ shared/date-now-snapshot
@@ -245,7 +244,7 @@
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render-with! mount-target
-              fn () $ comp-container @*reel
+              fn () $ comp-container @*reel on-control!
               , dispatch!
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
@@ -267,10 +266,6 @@
             respo.ffi.browser :as respo-browser
     'app.schema $ %{} 'FileEntry
       :defs $ {}
-        'DispatchOp $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ def DispatchOp (:: :unhandled)
-          :examples $ []
-          :schema $ quote AnyEnum
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
             :states (List respo.schema/CoordKey) Dynamic
@@ -298,20 +293,6 @@
           :examples $ []
           :schema $ quote $ Fn app.schema/Store
             -> $ Map Tag Dynamic
-        'normalize-op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn normalize-op (event)
-            match event
-              (:states cursor data)
-                Option :some $ app.schema/Op :states
-                  decode-map-as cursor $ List respo.schema/CoordKey
-                  , data
-              (:hydrate-storage data)
-                Option :some $ app.schema/Op :hydrate-storage $ decode-store
-                  decode-map-as data $ Map Tag Dynamic
-              _ $ do (eprintln "|Unknown op:" event) (Option :none)
-          :examples $ []
-          :schema $ quote $ Fn AnyEnum
-            -> $ Option app.schema/Op
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :states
@@ -340,15 +321,14 @@
                 archive $ {}
                   :states $ {} $ :cursor ([])
                   :extra |keep
-                restore $ .unwrap $ app.schema/normalize-op (:: :hydrate-storage archive)
-                state $ .unwrap $ app.schema/normalize-op
-                  :: :states ([] :menu |row 1) true
+                restore $ app.schema/Op :hydrate-storage $ app.schema/decode-store archive
+                state $ app.schema/Op :states ([] :menu |row 1) true
                 reel $ assert-type (reel.typed/new-reel app.schema/store) (reel.typed/State app.schema/Op app.schema/Store)
                 restored $ reel.typed/record-op updater reel restore |restore 0
                 edited $ reel.typed/record-op updater restored state |state 1
                 archive-text $ format-cirru-edn $ app.schema/encode-store (:store edited)
-                reload-op $ .unwrap $ app.schema/normalize-op
-                  :: :hydrate-storage $ parse-cirru-edn archive-text
+                reload-op $ app.schema/Op :hydrate-storage $ app.schema/decode-store
+                  decode-map-as (parse-cirru-edn archive-text) (Map Tag Dynamic)
               assert= archive $ app.schema/encode-store $ :store restored
               assert= (Result :ok true)
                 get-in
@@ -359,12 +339,12 @@
               assert= (:store edited) (updater app.schema/store reload-op |reload 2)
               assert |missing-states-must-fail $ try
                 do
-                  app.schema/normalize-op $ :: :hydrate-storage $ {}
+                  app.schema/decode-store $ {}
                   , false
                 fn (_error) true
               assert |non-map-states-must-fail $ try
                 do
-                  app.schema/normalize-op $ :: :hydrate-storage $ {} (:states |invalid)
+                  app.schema/decode-store $ {} $ :states |invalid
                   , false
                 fn (_error) true
             :tags $ #{} :unit

@@ -20,7 +20,7 @@ calcit query search '&map:get' --filter app.main --exact
 
 - Map 读取使用 get 的 Option 合同；必填字段错误不能变成默认空数据，缺失或为 nil 的 Source 地址在读取后转为 Option none。
 - 宿主值使用已发布 js-ffi / Respo 入口；挂载节点用 respo.ffi.browser/query-selector，不伪造 DOM 类型。
-- 派发入口分别解码 Reel 控制事件与应用 Op，Reel 历史和 updater 使用具体 Op。
+- 应用派发和 updater 接收具名 Op，开发面板和快捷键走独立的具名 Control 回调。
 - 真正的错误先确认所属模块并查已有 issue，再附最小复现上报；不修改共享缓存，不添加编译器硬编码规则。
 - 必须恢复存档成功后才注册保存定时器和离页/可见性保存监听；恢复失败不得覆盖原文。
 - HUD 现有一处宿主函数签名信任与开放 Map 的 Dynamic 必须如实记录，不能用伪断言清零。

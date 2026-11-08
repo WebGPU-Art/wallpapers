@@ -346,6 +346,9 @@
                 reel $ assert-type (reel.typed/new-reel app.schema/store) (reel.typed/State app.schema/Op app.schema/Store)
                 restored $ reel.typed/record-op updater reel restore |restore 0
                 edited $ reel.typed/record-op updater restored state |state 1
+                archive-text $ format-cirru-edn $ app.schema/encode-store (:store edited)
+                reload-op $ .unwrap $ app.schema/normalize-op
+                  :: :hydrate-storage $ parse-cirru-edn archive-text
               assert= archive $ app.schema/encode-store $ :store restored
               assert= (Result :ok true)
                 get-in
@@ -353,6 +356,17 @@
                   [] :states :menu |row 1 :data
               assert= (:store edited)
                 :store $ reel.typed/refresh updater edited app.schema/store
+              assert= (:store edited) (updater app.schema/store reload-op |reload 2)
+              assert |missing-states-must-fail $ try
+                do
+                  app.schema/normalize-op $ :: :hydrate-storage $ {}
+                  , false
+                fn (_error) true
+              assert |non-map-states-must-fail $ try
+                do
+                  app.schema/normalize-op $ :: :hydrate-storage $ {} (:states |invalid)
+                  , false
+                fn (_error) true
             :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater

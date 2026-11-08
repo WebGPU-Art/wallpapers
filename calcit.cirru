@@ -22,12 +22,7 @@
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel)
             let
-                store $ :store reel
-                states $ match (get store :states)
-                  (:some data)
-                    decode-map-as data $ Map Tag Dynamic
-                  (:none)
-                    decode-map-as nil $ Map Tag Dynamic
+                states $ :states $ :store reel
                 images-list $ decode-map-as (load-cirru-data)
                   List $ Map Tag Dynamic
               div
@@ -48,9 +43,7 @@
                   Option :some $ comp-typed-reel (>> states :reel) reel $ {}
                   Option :none
           :examples $ []
-          :schema $ quote $ Fn
-            reel.typed/State app.schema/Op $ Map Tag Dynamic
-            -> respo.schema/Component
+          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store) (-> respo.schema/Component)
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
@@ -178,8 +171,7 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
-          :schema $ quote $ Ref
-            reel.typed/State app.schema/Op $ Map Tag Dynamic
+          :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             if (enum? op)
@@ -234,7 +226,7 @@
             println "|Saved at" $ :iso $ shared/date-now-snapshot
             browser/storage-set!
               .unwrap $ get config/site :storage-key
-              format-cirru-edn $ :store @*reel
+              format-cirru-edn $ app.schema/encode-store $ :store @*reel
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
         'reload! $ %{} 'CodeEntry (:doc |)
@@ -282,9 +274,30 @@
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
             :states (List respo.schema/CoordKey) Dynamic
-            :hydrate-storage $ Map Tag Dynamic
+            :hydrate-storage app.schema/Store
           :examples $ []
           :schema $ quote EnumDef
+        'Store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Store
+            :states $ Map Tag Dynamic
+            :extras $ Map Tag Dynamic
+          :examples $ []
+          :schema $ quote StructDef
+        'decode-store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-store (archive)
+            Store :states
+              decode-map-as
+                .unwrap $ get archive :states
+                Map Tag Dynamic
+              , :extras $ dissoc archive :states
+          :examples $ []
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> app.schema/Store)
+        'encode-store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn encode-store (store)
+            assoc (:extras store) :states $ :states store
+          :examples $ []
+          :schema $ quote $ Fn app.schema/Store
+            -> $ Map Tag Dynamic
         'normalize-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn normalize-op (event)
             match event
@@ -293,17 +306,19 @@
                   decode-map-as cursor $ List respo.schema/CoordKey
                   , data
               (:hydrate-storage data)
-                Option :some $ app.schema/Op :hydrate-storage $ decode-map-as data (Map Tag Dynamic)
+                Option :some $ app.schema/Op :hydrate-storage $ decode-store
+                  decode-map-as data $ Map Tag Dynamic
               _ $ do (eprintln "|Unknown op:" event) (Option :none)
           :examples $ []
           :schema $ quote $ Fn AnyEnum
             -> $ Option app.schema/Op
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
-            {} $ :states $ {}
-              :cursor $ []
+            Store :states
+              {} $ :cursor $ []
+              , :extras $ {}
           :examples $ []
-          :schema $ quote $ Map Tag Dynamic
+          :schema $ quote app.schema/Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -312,11 +327,14 @@
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:states cursor s)
-                decode-map-as (update-states store cursor s) (Map Tag Dynamic)
+                app.schema/Store :states
+                  decode-map-as
+                    respo.cursor/update-state-tree (:states store) cursor s
+                    Map Tag Dynamic
+                  , :extras $ :extras store
               (:hydrate-storage data) data
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) app.schema/Op String Number
-            -> $ Map Tag Dynamic
+          :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
           :tests $ [] $ %{} 'TestEntry (:name |typed-reel-keeps-legacy-store)
             :code $ quote $ let
                 archive $ {}
@@ -325,16 +343,16 @@
                 restore $ .unwrap $ app.schema/normalize-op (:: :hydrate-storage archive)
                 state $ .unwrap $ app.schema/normalize-op
                   :: :states ([] :menu |row 1) true
-                reel $ assert-type (reel.typed/new-reel app.schema/store)
-                  reel.typed/State app.schema/Op $ Map Tag Dynamic
+                reel $ assert-type (reel.typed/new-reel app.schema/store) (reel.typed/State app.schema/Op app.schema/Store)
                 restored $ reel.typed/record-op updater reel restore |restore 0
                 edited $ reel.typed/record-op updater restored state |state 1
-              assert= archive $ :store restored
+              assert= archive $ app.schema/encode-store $ :store restored
               assert= (Result :ok true)
-                get-in (:store edited) ([] :states :menu |row 1 :data)
+                get-in
+                  app.schema/encode-store $ :store edited
+                  [] :states :menu |row 1 :data
               assert= (:store edited)
                 :store $ reel.typed/refresh updater edited app.schema/store
             :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require $ respo.cursor :refer $ update-states

@@ -23,8 +23,6 @@
           :code $ quote $ defcomp comp-container (reel on-control)
             let
                 states $ :states $ :store reel
-                images-list $ decode-map-as (load-cirru-data)
-                  List $ Map Tag Dynamic
               div
                 {} $ :class-name $ str-spaced css/global
                 div
@@ -34,10 +32,9 @@
                   {}
                     :class-name $ str-spaced css/row style-list
                     :style $ {} (:flex-wrap :wrap) (:margin |40px)
-                  -> images-list .reverse $ map-indexed $ fn (idx info)
-                    hint-fn $ Fn Number (Map Tag Dynamic)
-                      -> $ List app.comp.container/WallpaperChild
-                    [] idx $ comp-image-card $ decode-wallpaper info
+                  -> wallpapers $ map-indexed $ fn (idx info)
+                    hint-fn $ Fn Number app.comp.container/Wallpaper $ -> (List app.comp.container/WallpaperChild)
+                    [] idx $ comp-image-card info
                 space-y 120
                 if dev?
                   Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
@@ -144,6 +141,14 @@
                 str "|2px 2px 8px " $ hsl 0 0 100 0.5
           :examples $ []
           :schema $ quote String
+        'wallpapers $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def wallpapers
+            .reverse $ map
+              decode-map-as (load-cirru-data)
+                List $ Map Tag Dynamic
+              , decode-wallpaper
+          :examples $ []
+          :schema $ quote $ List app.comp.container/Wallpaper
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.css :as css)

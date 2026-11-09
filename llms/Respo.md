@@ -6,7 +6,7 @@
 
 - app.main：缓存挂载节点、维护 Reel、dispatch 与浏览器存储。挂载节点由 respo.ffi.browser/query-selector 返回；使用该框架的 DOM 能力边界，不直接把泛用 DOM host 断言成完整 Respo DOM。
 - app.comp.container：编译期读取 content/images.cirru，倒序展示卡片。url/name 是必填 String；address 可缺失或 nil。保留原图 URL、缩略图参数、Source target 和卡片点击行为。
-- app.updater 使用具体 Op。入口分别解码旧 Reel 控制和应用事件，更新器接收已校验的状态游标。
+- app.updater 使用具名 Op，更新器接收已校验的状态游标。Reel 控制通过独立的具名 Control 回调传递。
 - app.schema：保持现有 :states/:cursor 数据结构；不以迁移为由改变状态树或持久化 key。
 
 ## 查询当前事实

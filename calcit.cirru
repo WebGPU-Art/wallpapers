@@ -91,12 +91,28 @@
               Wallpaper :url url :name name :address address
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) (-> app.comp.container/Wallpaper)
-        'load-cirru-data $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defmacro load-cirru-data ()
-            &data-to-code $ parse-cirru-edn $ read-file |content/images.cirru
+        'load-wallpapers $ %{} 'CodeEntry
+          :doc "|Checks the local catalog during compilation and emits typed Wallpaper constructors."
+          :code $ quote $ defmacro load-wallpapers ()
+            let
+                rows $ decode-map-as
+                  parse-cirru-edn $ read-file |content/images.cirru
+                  List $ Map Tag Dynamic
+                forms $ map rows $ fn (row)
+                  let
+                      info $ decode-wallpaper row
+                      url $ :url info
+                      name $ :name info
+                      address $ match (:address info)
+                        (:some source)
+                          quasiquote $ calcit.core/Option :some ~source
+                        (:none)
+                          quote $ calcit.core/Option :none
+                    quasiquote $ app.comp.container/Wallpaper :url ~url :name ~name :address ~address
+              quasiquote $ [] ~@forms
           :examples $ []
           :schema $ quote $ Macro
-            -> $ Expr $ List (Map Tag Dynamic)
+            -> $ Expr $ List app.comp.container/Wallpaper
             :capabilities :fs-read
         'style-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-image-card
@@ -143,10 +159,7 @@
           :schema $ quote String
         'wallpapers $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def wallpapers
-            .reverse $ map
-              decode-map-as (load-cirru-data)
-                List $ Map Tag Dynamic
-              , decode-wallpaper
+            .reverse $ load-wallpapers
           :examples $ []
           :schema $ quote $ List app.comp.container/Wallpaper
       :ns $ %{} 'NsEntry (:doc |)

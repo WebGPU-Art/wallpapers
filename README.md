@@ -75,7 +75,7 @@ calcit fix --workflow strict --verify
 corepack yarn build
 ```
 
-原附带测试覆盖旧存档、状态路径和 Reel 回放。HUD 函数仍有一处显式宿主签名信任，开放的组件状态、存档额外字段和图片输入在各自边界保留 Dynamic。COS 证书或源图访问异常时，不关闭内置 verify 或更改图片存储路径绕过错误。
+原附带测试覆盖旧存档、状态路径和 Reel 回放。HUD 函数仍有一处显式宿主签名信任，开放的组件状态和存档额外字段保留 Dynamic。图片目录在编译期校验，浏览器直接接收具名 Wallpaper 记录。COS 证书或源图访问异常时，不关闭内置 verify 或更改图片存储路径绕过错误。
 
 ### License
 

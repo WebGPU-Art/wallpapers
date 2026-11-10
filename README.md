@@ -7,7 +7,7 @@ Demo https://webgpu.art/wallpapers/ .
 
 ### Workflow
 
-使用配对的正式 Calcit / `@calcit/procs` **0.38.0**、Caps 0.1.1、Node.js 24、Yarn 4.18.0：
+使用配对的正式 Calcit / `@calcit/procs` **0.40.0**、Caps 0.1.1、Node.js 24、Yarn 4.18.0：
 
 ```sh
 caps --strict --ci

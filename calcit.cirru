@@ -201,11 +201,8 @@
                 dispatch! $ schema/Op :hydrate-storage $ schema/decode-store
                   decode-map-as (parse-cirru-edn raw) (Map Tag Dynamic)
               (:none) &unit
-            browser/add-event-listener! |beforeunload $ fn (event)
-              hint-fn $ Fn js-ffi.browser/EventHost $ -> Unit
-              persist-storage!
+            browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             browser/add-event-listener! |visibilitychange $ fn (event)
-              hint-fn $ Fn js-ffi.browser/EventHost $ -> Unit
               match (browser/visibility-state)
                 (:hidden) (persist-storage!)
                 _ &unit

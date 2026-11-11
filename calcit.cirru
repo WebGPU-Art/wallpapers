@@ -166,6 +166,7 @@
             reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
             js-ffi.browser :as browser
+            respo.schema :refer $ RespoEvent
     'app.config $ %{} 'FileEntry
       :defs $ {}
         'dev? $ %{} 'CodeEntry (:doc |)
@@ -283,7 +284,7 @@
           :schema $ quote EnumDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store
-            :states $ Map Tag Dynamic
+            :states $ Map respo.schema/CoordKey Dynamic
             :extras $ Map Tag Dynamic
           :examples $ []
           :schema $ quote StructDef
@@ -292,7 +293,7 @@
             Store :states
               decode-map-as
                 .unwrap $ get archive :states
-                Map Tag Dynamic
+                Map respo.schema/CoordKey Dynamic
               , :extras $ dissoc archive :states
           :examples $ []
           :schema $ quote $ Fn (Map Tag V) (-> Store) (:generics V)
@@ -320,7 +321,7 @@
                 app.schema/Store :states
                   decode-map-as
                     respo.cursor/update-state-tree (:states store) cursor s
-                    Map Tag Dynamic
+                    Map respo.schema/CoordKey Dynamic
                   , :extras $ :extras store
               (:hydrate-storage data) data
           :examples $ []

@@ -84,7 +84,7 @@
                     if (nil? raw) None $ Some $ decode-map-as raw String
               Wallpaper :url url :name name :address address
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> Wallpaper)
+          :schema $ quote $ Fn (Map Tag V) (-> Wallpaper) (:generics V)
         'load-wallpapers $ %{} 'CodeEntry
           :doc "|Checks the local catalog during compilation and emits typed Wallpaper constructors."
           :code $ quote $ defmacro load-wallpapers ()
@@ -295,7 +295,7 @@
                 Map Tag Dynamic
               , :extras $ dissoc archive :states
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> Store)
+          :schema $ quote $ Fn (Map Tag V) (-> Store) (:generics V)
         'encode-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn encode-store (store)
             assoc (:extras store) :states $ :states store

@@ -15,10 +15,6 @@
             :address $ Option String
           :examples $ []
           :schema $ quote StructDef
-        'WallpaperChild $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defunion WallpaperChild Number respo.schema/Component
-          :examples $ []
-          :schema $ quote UnionDef
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel on-control)
             let
@@ -28,17 +24,16 @@
                 div
                   {} $ :class-name $ str-spaced style-title css/font-fancy
                   <> "|WebGPU Art"
-                list->
+                keyed->
                   {}
                     :class-name $ str-spaced css/row style-list
                     :style $ {} (:flex-wrap :wrap) (:margin |40px)
                   -> wallpapers $ map-indexed $ fn (idx info)
-                    hint-fn $ Fn Number app.comp.container/Wallpaper $ -> (List app.comp.container/WallpaperChild)
-                    [] idx $ comp-image-card info
+                    keyed-component idx $ comp-image-card info
                 space-y 120
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
-                  Option :none
+                  Some $ comp-typed-reel (>> states :reel) reel ({}) on-control
+                  , None
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
             Fn reel.typed/Control $ -> Unit
@@ -73,7 +68,7 @@
                         (:some source) (assoc props :href source)
                         (:none) props
           :examples $ []
-          :schema $ quote $ Fn app.comp.container/Wallpaper (-> respo.schema/Component)
+          :schema $ quote $ Fn Wallpaper (-> respo.schema/Component)
         'decode-wallpaper $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-wallpaper (info)
             let
@@ -84,13 +79,12 @@
                   .unwrap $ get info :name
                   , String
                 address $ match (get info :address)
-                  (:none) (Option :none)
+                  (:none) None
                   (:some raw)
-                    if (nil? raw) (Option :none)
-                      Option :some $ decode-map-as raw String
+                    if (nil? raw) None $ Some $ decode-map-as raw String
               Wallpaper :url url :name name :address address
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> app.comp.container/Wallpaper)
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> Wallpaper)
         'load-wallpapers $ %{} 'CodeEntry
           :doc "|Checks the local catalog during compilation and emits typed Wallpaper constructors."
           :code $ quote $ defmacro load-wallpapers ()
@@ -112,7 +106,7 @@
               quasiquote $ [] ~@forms
           :examples $ []
           :schema $ quote $ Macro
-            -> $ Expr $ List app.comp.container/Wallpaper
+            -> $ Expr $ List Wallpaper
             :capabilities :fs-read
         'style-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-image-card
@@ -161,13 +155,13 @@
           :code $ quote $ def wallpapers
             .reverse $ load-wallpapers
           :examples $ []
-          :schema $ quote $ List app.comp.container/Wallpaper
+          :schema $ quote $ List Wallpaper
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.css :as css)
             respo.util.format :refer $ hsl
             respo.css :refer $ defstyle
-            respo.core :refer $ defcomp defeffect <> >> list-> div button textarea span input a
+            respo.core :refer $ defcomp defeffect <> >> keyed-> keyed-component div button textarea span input a
             respo.comp.space :refer $ space-x space-y
             reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
@@ -191,7 +185,7 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
-          :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
+          :schema $ quote $ Ref (typed/State schema/Op schema/Store)
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             when config/dev? $ match op
@@ -200,7 +194,7 @@
             reset! *reel $ typed/record-op updater @*reel op (generate-id!) (shared/now-ms)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.schema/Op (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn schema/Op (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -234,7 +228,7 @@
             reset! *reel $ typed/apply-control updater @*reel control
             , &unit
           :examples $ []
-          :schema $ quote $ Fn reel.typed/Control (-> Unit)
+          :schema $ quote $ Fn typed/Control (-> Unit)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             println "|Saved at" $ :iso $ shared/date-now-snapshot
@@ -301,12 +295,12 @@
                 Map Tag Dynamic
               , :extras $ dissoc archive :states
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> app.schema/Store)
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> Store)
         'encode-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn encode-store (store)
             assoc (:extras store) :states $ :states store
           :examples $ []
-          :schema $ quote $ Fn app.schema/Store
+          :schema $ quote $ Fn Store
             -> $ Map Tag Dynamic
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
@@ -314,7 +308,7 @@
               {} $ :cursor $ []
               , :extras $ {}
           :examples $ []
-          :schema $ quote app.schema/Store
+          :schema $ quote Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry

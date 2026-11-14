@@ -10,6 +10,12 @@
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
+        'CatalogWallpaper $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct CatalogWallpaper (:url String) (:name String)
+            :address $ Option String
+            :comment $ Option String
+          :examples $ []
+          :schema $ quote StructDef
         'Wallpaper $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Wallpaper (:url String) (:name String)
             :address $ Option String
@@ -69,35 +75,18 @@
                         (:none) props
           :examples $ []
           :schema $ quote $ Fn Wallpaper (-> respo.schema/Component)
-        'decode-wallpaper $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn decode-wallpaper (info)
-            let
-                url $ decode-map-as
-                  .unwrap $ get info :url
-                  , String
-                name $ decode-map-as
-                  .unwrap $ get info :name
-                  , String
-                address $ match (get info :address)
-                  (:none) None
-                  (:some raw)
-                    if (nil? raw) None $ Some $ decode-map-as raw String
-              Wallpaper :url url :name name :address address
-          :examples $ []
-          :schema $ quote $ Fn (Map Tag V) (-> Wallpaper) (:generics V)
         'load-wallpapers $ %{} 'CodeEntry
           :doc "|Checks the local catalog during compilation and emits typed Wallpaper constructors."
           :code $ quote $ defmacro load-wallpapers ()
             let
                 rows $ decode-map-as
                   parse-cirru-edn $ read-file |content/images.cirru
-                  List $ Map Tag Dynamic
+                  List CatalogWallpaper
                 forms $ map rows $ fn (row)
                   let
-                      info $ decode-wallpaper row
-                      url $ :url info
-                      name $ :name info
-                      address $ match (:address info)
+                      url $ :url row
+                      name $ :name row
+                      address $ match (:address row)
                         (:some source)
                           quasiquote $ calcit.core/Option :some ~source
                         (:none)

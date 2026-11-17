@@ -44,6 +44,7 @@
           :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
             Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
+            :features :state
         'comp-image-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-image-card (info)
             let
@@ -243,7 +244,7 @@
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render-with! mount-target
-              fn () $ comp-container @*reel on-control!
+              fn () $ comp-container @*reel $ fn (op) (on-control! op)
               , dispatch!
           :examples $ []
           :schema $ quote $ Fn (-> Unit) (:features :io :state)

@@ -309,9 +309,7 @@
             match op
               (:states cursor s)
                 app.schema/Store :states
-                  decode-map-as
-                    respo.cursor/update-state-tree (:states store) cursor s
-                    Map respo.schema/CoordKey Dynamic
+                  respo.cursor/update-state-map (:states store) cursor s
                   , :extras $ :extras store
               (:hydrate-storage data) data
           :examples $ []

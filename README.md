@@ -7,7 +7,7 @@ Demo https://webgpu.art/wallpapers/ .
 
 ### Workflow
 
-使用配对的正式 Calcit / `@calcit/procs` **0.45.1**、Caps 0.1.1、Node.js 24、Yarn 4.18.0：
+使用配对的正式 Calcit / `@calcit/procs` **0.46.0**、Caps 0.1.1、Node.js 24、Yarn 4.18.0：
 
 ```sh
 caps --strict --ci
@@ -24,7 +24,7 @@ corepack yarn dev
 
 生产工作流串行且不中途取消：上传开始后即使 main 有新提交，也先完成当前版本的 COS 和服务器部署，再处理队列中的新版本。HEAD 检查用于跳过尚未开始上传的过期构建，不承诺部署时刻与 main 原子同步；不重复查询来缩小但无法消除该时间窗口。
 
-Respo 0.19.18、Reel 0.11.9、UI 0.16.5 和 js-ffi 0.2.24 使用精确正式 tag。Actions 同样使用精确正式 tag；这按维护者选择接受 tag 可移动的风险，不等价于 SHA pin 的不可变性。
+Respo 0.20.0、Reel 0.11.10、UI 0.16.6 和 js-ffi 0.2.26 使用精确正式 tag。Actions 同样使用精确正式 tag；这按维护者选择接受 tag 可移动的风险，不等价于 SHA pin 的不可变性。
 
 ### 0.38.0 使用者影响
 
